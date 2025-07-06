@@ -308,10 +308,10 @@ async function run() {
                 if (existing) {
                     await shopLocationCollection.updateOne(
                         { _id: existing._id },
-                        { $set: { latitude, longitude } }
+                        { $set: { latitude, longitude, shop_range } }
                     );
                 } else {
-                    await shopLocationCollection.insertOne({ latitude, longitude });
+                    await shopLocationCollection.insertOne({ latitude, longitude, shop_range });
                 }
                 res.json({ message: 'Shop location saved successfully' });
             } catch (error) {
