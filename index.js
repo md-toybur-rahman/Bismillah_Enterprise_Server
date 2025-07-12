@@ -38,14 +38,14 @@ async function run() {
         const shopTransectionsSummaryCollection = client.db('Bismillah_Enterprise').collection('shop_transections_summary');
         const noticePanelCollection = client.db('Bismillah_Enterprise').collection('notice_panel');
 
-        app.get("/shop_code/:id", async (req, res) => {
-            const id = req.params.id;
+        app.get("/shop_code", async (req, res) => {
+            const id = process.env.Shop_Code_ObjectId;
             const query = { _id: new ObjectId(id) };
             const shopCode = await shopCodeCollection.find(query).toArray();
             res.send(shopCode);
         })
-        app.put('/shop_code/:id', async (req, res) => {
-            const id = req.params.id;
+        app.put('/shop_code', async (req, res) => {
+            const id = process.env.Shop_Code_ObjectId;
             const filter = { _id: new ObjectId(id) };
             const options = { upsert: true };
             const updatedCode = req.body;
