@@ -40,6 +40,7 @@ async function run() {
 
         app.get("/shop_code", async (req, res) => {
             const id = process.env.Shop_Code_ObjectId;
+            console.log(id);
             const query = { _id: new ObjectId(id) };
             const shopCode = await shopCodeCollection.find(query).toArray();
             res.send(shopCode);
