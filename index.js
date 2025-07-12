@@ -37,6 +37,7 @@ async function run() {
         const shopTransectionsCollection = client.db('Bismillah_Enterprise').collection('shop_transections');
         const shopTransectionsSummaryCollection = client.db('Bismillah_Enterprise').collection('shop_transections_summary');
         const noticePanelCollection = client.db('Bismillah_Enterprise').collection('notice_panel');
+        const staffBonusCollection = client.db('Bismillah_Enterprise').collection('staff_bonus');
 
         app.get("/shop_code", async (req, res) => {
             // const id = process.env.Shop_Code_ObjectId;
@@ -722,6 +723,51 @@ async function run() {
             const result = await noticePanelCollection.find().toArray();
             res.send(result);
         });
+        app.get('/staff_bonus', async (req, res) => {
+            const result = await staffBonusCollection.find().toArray();
+            res.send(result);
+        });
+        app.put('/staff_bonus', async (req, res) => {
+            const entryData = req.body;
+            const existing = await shopLocationCollection.findOne({});
+            if (entryData.entry_type === 'first entry') {
+                const now = new Date();
+                // const Time = now.toLocaleTimeString('en-BD', {
+                //     hour: '2-digit',
+                //     minute: '2-digit',
+                //     hour12: true,
+                // });
+                const parseTime = (timeStr) => {
+                    if (!timeStr) return null;
+                    const [time, modifier] = timeStr.split(' ');
+                    let [hours, minutes] = time.split(':').map(Number);
+                    if (modifier === 'PM' && hours !== 12) hours += 12;
+                    if (modifier === 'AM' && hours === 12) hours = 0;
+                    return hours * 60 + minutes;
+                };
+                if (parseTime(entryData.time) < 480) {
+                    const result = await shopLocationCollection.updateOne(
+                        { _id: existing._id },
+                        { $set: { first_entry: { time: '8:00 AM', uid: entryData.uid } } }
+                    );
+                    res.send(result);
+                }
+                if (parseTime(entryData.time) > 480 && parseTime(entryData.time) < 510) {
+                    const result = await shopLocationCollection.updateOne(
+                        { _id: existing._id },
+                        { $set: { first_entry: { time: entryData.time, uid: entryData.uid } } }
+                    );
+                    res.send(result);
+                }
+            }
+            if (entryData.entry_type === 'second entry') {
+                const result = await shopLocationCollection.updateOne(
+                    { _id: existing._id },
+                    { $set: { second_entry: { time: entryData.time, uid: entryData.uid } } }
+                );
+                res.send(result);
+            }
+        })
 
 
 
