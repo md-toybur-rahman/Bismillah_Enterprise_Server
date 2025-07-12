@@ -467,6 +467,7 @@ async function run() {
                 today_exit2_time: bodyData.today_exit2_time,
                 total_hour: bodyData.total_hour,
                 total_minute: bodyData.total_minute,
+                today_bonus: bodyData.today_bonus,
                 total_earn: bodyData.total_earn,
                 additional_movement_hour: bodyData.additional_movement_hour,
                 additional_movement_minute: bodyData.additional_movement_minute
@@ -489,7 +490,8 @@ async function run() {
                         additional_enter_time: '',
                         additional_exit_time: '',
                         additional_movement_hour: 0,
-                        additional_movement_minute: 0
+                        additional_movement_minute: 0,
+                        bonus: bodyData.total_bonus
                     }
                 };
                 const ErrorDoc = {
@@ -505,12 +507,22 @@ async function run() {
                     }
                 }
                 if (bodyData.today_exit1_time === '' || bodyData.today_exit2_time === '') {
-                    const result = await staffsCollection.updateOne(filter, ErrorDoc);
-                    res.send(result);
+                    await staffsCollection.updateOne(filter, ErrorDoc, { upsert: true });
+                    await staffBonusCollection.updateOne(
+                        { _id: new ObjectId(process.env.staff_bonus_ObjectId) },
+                        { $set: { first_entry: { time: '', uid: '' }, second_entry: { time: '', uid: '' } } },
+                        { upsert: true }
+                    );
+                    res.send({ message: 'Work time submitted successfully' });
                 }
                 else {
-                    const result = await staffsCollection.updateOne(filter, updateDoc);
-                    res.send(result);
+                    await staffsCollection.updateOne(filter, updateDoc, { upsert: true });
+                    await staffBonusCollection.updateOne(
+                        { _id: new ObjectId(process.env.staff_bonus_ObjectId) },
+                        { $set: { first_entry: { time: '', uid: '' }, second_entry: { time: '', uid: '' } } },
+                        { upsert: true }
+                    );
+                    res.send({ message: 'Work time submitted successfully' });
                 }
             } catch (err) {
                 res.status(500).send({ error: 'Update failed', details: err.message });
@@ -729,14 +741,10 @@ async function run() {
         });
         app.put('/staff_bonus', async (req, res) => {
             const entryData = req.body;
-            const existing = await shopLocationCollection.findOne({});
+            const existing = await staffBonusCollection.findOne({});
+
             if (entryData.entry_type === 'first entry') {
                 const now = new Date();
-                // const Time = now.toLocaleTimeString('en-BD', {
-                //     hour: '2-digit',
-                //     minute: '2-digit',
-                //     hour12: true,
-                // });
                 const parseTime = (timeStr) => {
                     if (!timeStr) return null;
                     const [time, modifier] = timeStr.split(' ');
@@ -746,14 +754,14 @@ async function run() {
                     return hours * 60 + minutes;
                 };
                 if (parseTime(entryData.time) < 480) {
-                    const result = await shopLocationCollection.updateOne(
+                    const result = await staffBonusCollection.updateOne(
                         { _id: existing._id },
                         { $set: { first_entry: { time: '8:00 AM', uid: entryData.uid } } }
                     );
                     res.send(result);
                 }
                 if (parseTime(entryData.time) > 480 && parseTime(entryData.time) < 510) {
-                    const result = await shopLocationCollection.updateOne(
+                    const result = await staffBonusCollection.updateOne(
                         { _id: existing._id },
                         { $set: { first_entry: { time: entryData.time, uid: entryData.uid } } }
                     );
@@ -761,7 +769,7 @@ async function run() {
                 }
             }
             if (entryData.entry_type === 'second entry') {
-                const result = await shopLocationCollection.updateOne(
+                const result = await staffBonusCollection.updateOne(
                     { _id: existing._id },
                     { $set: { second_entry: { time: entryData.time, uid: entryData.uid } } }
                 );
