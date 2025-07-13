@@ -49,20 +49,21 @@ async function run() {
             const shopCode = await shopCodeCollection.find().toArray();
             res.send(shopCode);
         })
-        app.put('/shop_code', async (req, res) => {
-            const id = process.env.Shop_Code_ObjectId;
-            const filter = { _id: new ObjectId(id) };
+        app.post('/shop_code', async (req, res) => {
             const options = { upsert: true };
             const updatedCode = req.body;
-            const shopCode = {
-                $set: {
-                    shop_code: updatedCode.shop_code
-                }
-            };
-
             try {
-                const result = await shopCodeCollection.updateOne(filter, shopCode, options);
-                res.send(result);
+                const existing = await shopLocationCollection.findOne({});
+                if (existing) {
+                    await shopCodeCollection.updateOne(
+                        { _id: existing._id },
+                        { $set: { shop_code: updatedCode.shop_code } },
+                        options
+                    );
+                } else {
+                    await shopCodeCollection.insertOne({ shop_code: updatedCode.shop_code });
+                }
+                res.send({ message: 'shop code set successfully' });
             } catch (err) {
                 res.status(500).send({ error: 'Update failed', details: err });
             }
@@ -667,7 +668,7 @@ async function run() {
                     await shopLocationCollection.insertOne(bodyData);
                 }
                 res.json({ message: 'Shop transections saved successfully' });
-                
+
             } catch (err) {
                 console.error(err);
                 res.status(500).send({ error: 'Update failed', details: err.message });
@@ -757,6 +758,25 @@ async function run() {
         app.get('/notice_panel', async (req, res) => {
             const result = await noticePanelCollection.find().toArray();
             res.send(result);
+        });
+        app.post('/notice_panel', async (req, res) => {
+            const options = { upsert: true };
+            const updatedNotice = req.body;
+            try {
+                const existing = await noticePanelCollection.findOne({});
+                if (existing) {
+                    await noticePanelCollection.updateOne(
+                        { _id: existing._id },
+                        { $set: { notice: updatedNotice.notice } },
+                        options
+                    );
+                } else {
+                    await noticePanelCollection.insertOne({ notice: updatedNotice.notice});
+                }
+                res.send({ message: 'notice set successfully' });
+            } catch (err) {
+                res.status(500).send({ error: 'Update failed', details: err });
+            }
         });
         app.get('/staff_bonus', async (req, res) => {
             const result = await staffBonusCollection.find().toArray();
