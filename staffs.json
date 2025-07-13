@@ -56,5 +56,79 @@
                 "payment_status": "Payed"
             }
         ]
+    },
+    {
+    "_id": {
+        "$oid": "687375d4d9d8b6c72b8b687b"
+    },
+    "name": "Bismillah Enterprise",
+    "on_behalf": "Toybur Rahman",
+    "mobile_no": "01773345189",
+    "address": "Jadoya, Jokshin Bazar",
+    "vouchers": [
+        {
+            "date": "13 July, 2025",
+            "voucher_no": "12345",
+            "payment_status": "due",
+            "due_amount": {
+                "$numberInt": "300"
+            },
+            "paid_amount": {
+                "$numberInt": "100"
+            },
+            "products": [
+                {
+                    "product_name": "Pen",
+                    "quantity": {
+                        "$numberInt": "5"
+                    },
+                    "rate": {
+                        "$numberInt": "6"
+                    },
+                    "total": {
+                        "$numberInt": "30"
+                    }
+                },
+                {
+                    "product_name": "Photocopy",
+                    "quantity": {
+                        "$numberInt": "200"
+                    },
+                    "rate": {
+                        "$numberDouble": "1.85"
+                    },
+                    "total": {
+                        "$numberInt": "370"
+                    }
+                }
+            ]
+        }
+    ],
+    "transections": [
+        {
+            "date": "13 July, 2025",
+            "reference_voucher": "12345",
+            "paid_amount": {
+                "$numberInt": "100"
+            },
+            "due": {
+                "$numberInt": "300"
+            },
+            "status": "due"
+        }
+    ],
+    "total_due": {
+        "$numberInt": "300"
+    },
+    "total_bill": {
+        "$numberInt": "400"
+    },
+    "total_paid": {
+        "$numberInt": "100"
     }
+}
 ]
+
+
+
+

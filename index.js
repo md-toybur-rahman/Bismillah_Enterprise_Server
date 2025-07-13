@@ -41,6 +41,7 @@ async function run() {
         const selfTransectionsCollection = client.db('Bismillah_Enterprise').collection('self_transections');
         const selfTransectionsSummaryCollection = client.db('Bismillah_Enterprise').collection('self_transections_summary');
         const clientCornerCollection = client.db('Bismillah_Enterprise').collection('client_corner');
+        const voucherSlCollection = client.db('Bismillah_Enterprise').collection('voucher_sl_no');
 
         app.get("/shop_code", async (req, res) => {
             // const id = process.env.Shop_Code_ObjectId;
@@ -771,7 +772,7 @@ async function run() {
                         options
                     );
                 } else {
-                    await noticePanelCollection.insertOne({ notice: updatedNotice.notice});
+                    await noticePanelCollection.insertOne({ notice: updatedNotice.notice });
                 }
                 res.send({ message: 'notice set successfully' });
             } catch (err) {
@@ -831,7 +832,65 @@ async function run() {
             const result = await clientCornerCollection.find().toArray();
             res.send(result);
         });
-
+        app.get('/client_details/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const result = await clientCornerCollection.findOne(filter);
+            res.send(result);
+        });
+        app.post('/new_client', async (req, res) => {
+            const clientData = req.body;
+            const result = await clientCornerCollection.insertOne(clientData);
+            res.send(result);
+        })
+        app.get('/voucher_sl', async (req, res) => {
+            const result = await voucherSlCollection.findOne({});
+            res.send(result);
+        });
+        app.post('/voucher_sl', async (req, res) => {
+            const options = { upsert: true };
+            const updatedSl = req.body;
+            try {
+                const existing = await voucherSlCollection.findOne({});
+                if (existing) {
+                    await voucherSlCollection.updateOne(
+                        { _id: existing._id },
+                        { $set: { sl_no: updatedSl.new_sl_no } },
+                        options
+                    );
+                } else {
+                    await voucherSlCollection.insertOne({ sl_no: updatedSl.new_sl_no });
+                }
+                res.send({ message: 'new sl set successfully' });
+            } catch (err) {
+                res.status(500).send({ error: 'Update failed', details: err });
+            }
+        });
+        app.post('/new_voucher/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const Data = req.body;
+            const voucher = {
+                date: Data.date,
+                voucher_no: String(Data.voucher_no),
+                products: Data.products,
+                total: Data.total,
+                paid_amount: Data.paid_amount,
+                due_amount: Data.due_amount,
+                payment_status: Data.payment_status
+            }
+            try {
+                const result = await clientCornerCollection.updateOne(
+                    filter,
+                    { $push: { vouchers: voucher } },
+                    options
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ error: 'Update failed', details: err });
+            }
+        });
 
 
 
