@@ -38,6 +38,9 @@ async function run() {
         const shopTransectionsSummaryCollection = client.db('Bismillah_Enterprise').collection('shop_transections_summary');
         const noticePanelCollection = client.db('Bismillah_Enterprise').collection('notice_panel');
         const staffBonusCollection = client.db('Bismillah_Enterprise').collection('staff_bonus');
+        const selfTransectionsCollection = client.db('Bismillah_Enterprise').collection('self_transections');
+        const selfTransectionsSummaryCollection = client.db('Bismillah_Enterprise').collection('self_transections_summary');
+        const clientCornerCollection = client.db('Bismillah_Enterprise').collection('client_corner');
 
         app.get("/shop_code", async (req, res) => {
             // const id = process.env.Shop_Code_ObjectId;
@@ -650,6 +653,26 @@ async function run() {
                 res.status(500).send({ error: 'Update failed', details: err.message });
             }
         });
+        app.post('/shop_transections_closing_month', async (req, res) => {
+            const bodyData = req.body;
+            try {
+                const existing = await shopTransectionsCollection.findOne({});
+                if (existing) {
+                    await shopTransectionsSummaryCollection.insertOne(bodyData);
+                    await shopTransectionsCollection.updateOne(
+                        { _id: existing._id },
+                        { $set: { month_name: '', total_revenue_amount: 0, total_expense_amount: 0, hand_on_cash: bodyData.hand_on_cash, revenue_transections: [], expense_transections: [] } }
+                    );
+                } else {
+                    await shopLocationCollection.insertOne(bodyData);
+                }
+                res.json({ message: 'Shop transections saved successfully' });
+                
+            } catch (err) {
+                console.error(err);
+                res.status(500).send({ error: 'Update failed', details: err.message });
+            }
+        });
 
         app.put('/set_user_category/:uid', async (req, res) => {
             const uid = req.params.uid;
@@ -776,6 +799,18 @@ async function run() {
                 res.send(result);
             }
         })
+        app.get('/self_transections', async (req, res) => {
+            const result = await selfTransectionsCollection.find().toArray();
+            res.send(result);
+        });
+        app.get('/self_transections_summary', async (req, res) => {
+            const result = await selfTransectionsSummaryCollection.find().toArray();
+            res.send(result);
+        });
+        app.get('/client_corner', async (req, res) => {
+            const result = await clientCornerCollection.find().toArray();
+            res.send(result);
+        });
 
 
 
