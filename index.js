@@ -891,6 +891,37 @@ async function run() {
                 res.status(500).send({ error: 'Update failed', details: err });
             }
         });
+        app.put('/take_payment/:id', async (req, res) => {
+            const id = req.params.id;
+            const Data = req.body;
+            const filter = { _id: new ObjectId(id), 'vouchers.voucher_no': Data.voucher_no };
+            const transection = {
+                date: Data.date,
+                reference_voucher: String(Data.reference_voucher),
+                paid_amount: Data.paid_amount,
+                due_amount: Data.due,
+                payment_status: Data.payment_status
+            }
+            try {
+                const result = await clientCornerCollection.updateOne(
+                    filter,
+                    {
+                        $set: {
+                            'vouchers.$.paid_amount': Data.paid_amount,
+                            'vouchers.$.due_amount': Data.due,
+                            'vouchers.$.payment_status': Data.payment_status
+                        }, $push: { transections: transection }
+                    }
+                );
+                if(result.modifiedCount > 0) {
+                    res.send({ success: true, message: 'updated' });
+                } else {
+                    res.status(404).send({ success: false, message: 'Voucher not found' });
+                }
+            } catch (err) {
+                res.status(500).send({ error: 'Update failed', details: err });
+            }
+        });
 
 
 
