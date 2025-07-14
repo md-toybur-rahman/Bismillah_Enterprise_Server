@@ -643,7 +643,8 @@ async function run() {
                         withdrawal_amount: 0,
                         available_balance: bodyData.last_month_due,
                         last_month_due: bodyData.last_month_due,
-                        current_month_details: []
+                        current_month_details: [],
+                        current_working_month: bodyData.current_working_month
                     }
                 };
 
