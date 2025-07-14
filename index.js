@@ -666,7 +666,7 @@ async function run() {
                         { $set: { month_name: '', total_revenue_amount: 0, total_expense_amount: 0, hand_on_cash: bodyData.hand_on_cash, revenue_transections: [], expense_transections: [] } }
                     );
                 } else {
-                    await shopLocationCollection.insertOne(bodyData);
+                    await shopTransectionsCollection.insertOne(bodyData);
                 }
                 res.json({ message: 'Shop transections saved successfully' });
 
@@ -675,6 +675,56 @@ async function run() {
                 res.status(500).send({ error: 'Update failed', details: err.message });
             }
         });
+        app.post('/self_transections_closing_month', async (req, res) => {
+            const bodyData = req.body;
+            try {
+                const existing = await selfTransectionsCollection.findOne({});
+                if (existing) {
+                    await selfTransectionsSummaryCollection.insertOne(bodyData);
+                    await selfTransectionsCollection.updateOne(
+                        { _id: existing._id },
+                        { $set: { month_name: '', total_revenue_amount: 0, total_expense_amount: 0, hand_on_cash: bodyData.hand_on_cash, revenue_transections: [], expense_transections: [] } }
+                    );
+                } else {
+                    await selfTransectionsCollection.insertOne(bodyData);
+                }
+                res.json({ message: 'Shop transections saved successfully' });
+
+            } catch (err) {
+                console.error(err);
+                res.status(500).send({ error: 'Update failed', details: err.message });
+            }
+        });
+        app.put('/start_new_month', async (req, res) => {
+            const bodyData = req.body;
+            console.log(bodyData);
+            try {
+                const existing = await shopTransectionsCollection.findOne({});
+                const result = await shopTransectionsCollection.updateOne(
+                    { _id: existing._id },
+                    { $set: { month_name: bodyData.month_name } }
+                );
+                res.send(result)
+            } catch (err) {
+                console.error(err);
+                res.status(500).send({ error: 'Update failed', details: err.message });
+            }
+        })
+        app.put('/self_start_new_month', async (req, res) => {
+            const bodyData = req.body;
+            console.log(bodyData);
+            try {
+                const existing = await selfTransectionsCollection.findOne({});
+                const result = await selfTransectionsCollection.updateOne(
+                    { _id: existing._id },
+                    { $set: { month_name: bodyData.month_name } }
+                );
+                res.send(result)
+            } catch (err) {
+                console.error(err);
+                res.status(500).send({ error: 'Update failed', details: err.message });
+            }
+        })
 
         app.put('/set_user_category/:uid', async (req, res) => {
             const uid = req.params.uid;
@@ -749,6 +799,42 @@ async function run() {
                     }
                 }
                 const result = await shopTransectionsCollection.updateOne(filter, updateDoc);
+                res.send(result);
+            }
+        })
+        app.put('/self_transections', async (req, res) => {
+            const filter = await selfTransectionsCollection.findOne({})
+            const bodyData = req.body;
+            const transection = {
+                transection_id: bodyData.transection_id,
+                transection_date: bodyData.transection_date,
+                transection_amount: bodyData.transection_amount,
+                transection_explaination: bodyData.transection_explaination
+            }
+            if (bodyData.transection_type === 'revenue') {
+                const updateDoc = {
+                    $push: {
+                        revenue_transections: transection
+                    },
+                    $set: {
+                        total_revenue_amount: bodyData.total_revenue_amount,
+                        hand_on_cash: bodyData.hand_on_cash
+                    }
+                }
+                const result = await selfTransectionsCollection.updateOne(filter, updateDoc);
+                res.send(result);
+            }
+            else {
+                const updateDoc = {
+                    $push: {
+                        expense_transections: transection
+                    },
+                    $set: {
+                        total_expense_amount: bodyData.total_expense_amount,
+                        hand_on_cash: bodyData.hand_on_cash
+                    }
+                }
+                const result = await selfTransectionsCollection.updateOne(filter, updateDoc);
                 res.send(result);
             }
         })
@@ -913,7 +999,7 @@ async function run() {
                         }, $push: { transections: transection }
                     }
                 );
-                if(result.modifiedCount > 0) {
+                if (result.modifiedCount > 0) {
                     res.send({ success: true, message: 'updated' });
                 } else {
                     res.status(404).send({ success: false, message: 'Voucher not found' });
