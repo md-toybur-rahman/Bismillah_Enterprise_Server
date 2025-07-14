@@ -488,6 +488,7 @@ async function run() {
                         total_working_hour: bodyData.total_working_hour,
                         total_working_minute: bodyData.total_working_minute,
                         total_income: bodyData.total_income,
+                        available_balance: bodyData.available_balance,
                         today_enter1_time: '',
                         today_exit1_time: '',
                         today_enter2_time: '',
