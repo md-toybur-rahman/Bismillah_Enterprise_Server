@@ -514,20 +514,10 @@ async function run() {
                 }
                 if (bodyData.today_exit1_time === '' && bodyData.today_exit2_time === '') {
                     await staffsCollection.updateOne(filter, ErrorDoc, { upsert: true });
-                    await staffBonusCollection.updateOne(
-                        { _id: new ObjectId(process.env.staff_bonus_ObjectId) },
-                        { $set: { first_entry: { time: '', uid: '' }, second_entry: { time: '', uid: '' } } },
-                        { upsert: true }
-                    );
                     res.send({ message: 'Work time submitted successfully' });
                 }
                 else {
                     await staffsCollection.updateOne(filter, updateDoc, { upsert: true });
-                    await staffBonusCollection.updateOne(
-                        { _id: new ObjectId(process.env.staff_bonus_ObjectId) },
-                        { $set: { first_entry: { time: '', uid: '' }, second_entry: { time: '', uid: '' } } },
-                        { upsert: true }
-                    );
                     res.send({ message: 'Work time submitted successfully' });
                 }
             } catch (err) {
@@ -621,6 +611,7 @@ async function run() {
                 total_income: bodyData.total_income,
                 total_worked_time: `${bodyData.total_working_hour} Hour, ${bodyData.total_working_minute} Minute`,
                 paid_amount: bodyData.paid_amount,
+                receiveable_amount: bodyData.last_month_due,
                 paid_date: bodyData.paid_date,
             };
 
@@ -868,7 +859,13 @@ async function run() {
             }
         });
         app.get('/staff_bonus', async (req, res) => {
-            const result = await staffBonusCollection.find().toArray();
+            const result = await staffBonusCollection.findOne({});
+            res.send(result);
+        });
+        app.delete('/staff_bonus/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)};
+            const result = await staffBonusCollection.deleteOne(filter);
             res.send(result);
         });
         app.put('/staff_bonus', async (req, res) => {
