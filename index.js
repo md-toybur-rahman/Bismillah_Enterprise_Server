@@ -608,8 +608,9 @@ async function run() {
 
             const newIncomeHistory = {
                 month_name: bodyData.month_name,
-                total_income: bodyData.total_income,
                 total_worked_time: `${bodyData.total_working_hour} Hour, ${bodyData.total_working_minute} Minute`,
+                previous_due: bodyData.last_month_due,
+                total_income: bodyData.total_income,
                 paid_amount: bodyData.paid_amount,
                 receiveable_amount: bodyData.last_month_due,
                 paid_date: bodyData.paid_date,
@@ -630,6 +631,8 @@ async function run() {
                     },
                     $set: {
                         total_income: 0,
+                        bonus: 0,
+                        fine: 0,
                         total_working_hour: 0,
                         total_working_minute: 0,
                         withdrawal_amount: 0,
@@ -1014,6 +1017,17 @@ async function run() {
                 res.status(500).send({ error: 'Update failed', details: err });
             }
         });
+        app.put('/hour_rate/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)};
+            const bodyData = req.body;
+            const result = await staffsCollection.updateOne(filter, {
+                $set: {
+                    hour_rate: bodyData.hour_rate
+                }
+            })
+            res.send(result);
+        })
 
 
 
