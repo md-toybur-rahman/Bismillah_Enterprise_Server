@@ -862,16 +862,23 @@ async function run() {
             const result = await staffBonusCollection.findOne({});
             res.send(result);
         });
-        app.delete('/staff_bonus/:id', async (req, res) => {
-            const id = req.params.id;
-            const filter = {_id: new ObjectId(id)};
-            const result = await staffBonusCollection.deleteOne(filter);
-            res.send(result);
-        });
         app.put('/staff_bonus', async (req, res) => {
             const entryData = req.body;
             const existing = await staffBonusCollection.findOne({});
 
+            if (entryData.entry_type === 'new day') {
+                const result = await staffBonusCollection.updateOne(
+                    { _id: existing._id },
+                    {
+                        $set: {
+                            date: entryData.date,
+                            first_entry: { time: '', uid: '' },
+                            second_entry: { time: '', uid: '' }
+                        }
+                    }
+                );
+                res.send(result);
+            }
             if (entryData.entry_type === 'first entry') {
                 const now = new Date();
                 const parseTime = (timeStr) => {
