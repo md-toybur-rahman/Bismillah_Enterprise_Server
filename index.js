@@ -42,6 +42,7 @@ async function run() {
         const selfTransectionsSummaryCollection = client.db('Bismillah_Enterprise').collection('self_transections_summary');
         const clientCornerCollection = client.db('Bismillah_Enterprise').collection('client_corner');
         const voucherSlCollection = client.db('Bismillah_Enterprise').collection('voucher_sl_no');
+        const productsCollection = client.db('Bismillah_Enterprise').collection('products');
 
         app.get("/shop_code", async (req, res) => {
             // const id = process.env.Shop_Code_ObjectId;
@@ -583,18 +584,38 @@ async function run() {
                 }
 
                 // Step 2: Push new transection + update balances
-                const updateDoc = {
-                    $push: {
-                        transections: newTransectionsData
-                    },
-                    $set: {
-                        withdrawal_amount: bodyData.withdrawal_amount,
-                        available_balance: bodyData.available_balance
-                    }
-                };
+                console.log(bodyData.transection_type);
+                if (bodyData.transection_type === 'Payback Lend') {
+                    const new_withdrawal_amount = bodyData.previous_withdrawal_amount - bodyData.transection_amount;
+                    const new_available_balance = bodyData.previous_available_balance + bodyData.transection_amount
+                    console.log(new_withdrawal_amount, new_available_balance)
+                    const updateDoc = {
+                        $push: {
+                            transections: newTransectionsData
+                        },
+                        $set: {
+                            withdrawal_amount: new_withdrawal_amount,
+                            available_balance: new_available_balance
+                        }
+                    };
 
-                const result = await staffsCollection.updateOne(filter, updateDoc);
-                res.send(result);
+                    const result = await staffsCollection.updateOne(filter, updateDoc);
+                    res.send(result);
+                }
+                else {
+                    const updateDoc = {
+                        $push: {
+                            transections: newTransectionsData
+                        },
+                        $set: {
+                            withdrawal_amount: bodyData.withdrawal_amount,
+                            available_balance: bodyData.available_balance
+                        }
+                    };
+
+                    const result = await staffsCollection.updateOne(filter, updateDoc);
+                    res.send(result);
+                }
 
             } catch (err) {
                 console.error(err);
@@ -961,7 +982,7 @@ async function run() {
                 res.status(500).send({ error: 'Update failed', details: err });
             }
         });
-        app.post('/new_voucher/:id', async (req, res) => {
+        app.put('/new_voucher/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const options = { upsert: true };
@@ -976,6 +997,12 @@ async function run() {
                 payment_status: Data.payment_status
             }
             try {
+                const client = await clientCornerCollection.findOne(filter);
+
+                // Step 1: If length > 19, remove first transection
+                if (client?.voucher?.length > 15) {
+                    await clientCornerCollection.updateOne(filter, { $pop: { voucher: -1 } }); // remove first
+                }
                 const result = await clientCornerCollection.updateOne(
                     filter,
                     { $push: { vouchers: voucher } },
@@ -998,6 +1025,12 @@ async function run() {
                 payment_status: Data.payment_status
             }
             try {
+                const client = await clientCornerCollection.findOne(filter);
+
+                // Step 1: If length > 19, remove first transection
+                if (client?.transections?.length > 15) {
+                    await clientCornerCollection.updateOne(filter, { $pop: { transections: -1 } }); // remove first
+                }
                 const result = await clientCornerCollection.updateOne(
                     filter,
                     {
@@ -1019,7 +1052,7 @@ async function run() {
         });
         app.put('/hour_rate/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const bodyData = req.body;
             const result = await staffsCollection.updateOne(filter, {
                 $set: {
@@ -1027,8 +1060,49 @@ async function run() {
                 }
             })
             res.send(result);
-        })
+        });
+        app.put('/payback_loan/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const bodyData = req.body;
+            const result = await staffsCollection.updateOne(filter, {
+                $set: {
+                    withdrawal_amount: bodyData.withdrawal_amount,
+                    available_balance: bodyData.available_balance
+                }
+            });
+            res.send(result);
+        });
 
+        app.get('/products', async (req, res) => {
+            const result = await productsCollection.find().toArray();
+            res.send(result);
+        });
+        app.post('/products', async (req, res) => {
+            const product = req.body;
+            const result = await productsCollection.insertOne(product);
+            res.send(result);
+        });
+        app.delete('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const product = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const result = await productsCollection.deleteOne(filter);
+            res.send(result);
+        });
+        app.put('/replace_staff/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const bodyData = req.body;
+            const result = await staffsCollection.updateOne(filter, {
+                $set: {
+                    name: bodyData.name,
+                    email: bodyData.email,
+                    uid: bodyData.uid
+                }
+            });
+            res.send(result);
+        });
 
 
         await client.db("admin").command({ ping: 1 });
