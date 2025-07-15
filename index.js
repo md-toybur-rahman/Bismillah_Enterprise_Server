@@ -1096,7 +1096,6 @@ async function run() {
             const bodyData = req.body;
             const result = await staffsCollection.updateOne(filter, {
                 $set: {
-                    name: bodyData.name,
                     email: bodyData.email,
                     uid: bodyData.uid
                 }
