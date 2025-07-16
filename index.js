@@ -954,6 +954,12 @@ async function run() {
             const result = await clientCornerCollection.findOne(filter);
             res.send(result);
         });
+        app.delete('/client/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const result = await clientCornerCollection.deleteOne(filter);
+            res.send(result);
+        });
         app.post('/new_client', async (req, res) => {
             const clientData = req.body;
             const result = await clientCornerCollection.insertOne(clientData);
@@ -1000,7 +1006,7 @@ async function run() {
                 const client = await clientCornerCollection.findOne(filter);
 
                 // Step 1: If length > 19, remove first transection
-                if (client?.voucher?.length > 15) {
+                if (client?.voucher?.length > 10) {
                     await clientCornerCollection.updateOne(filter, { $pop: { voucher: -1 } }); // remove first
                 }
                 const result = await clientCornerCollection.updateOne(
