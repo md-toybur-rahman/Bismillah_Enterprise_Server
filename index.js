@@ -2,15 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const os = require('os');
 const cron = require('node-cron');
+
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { error } = require('console');
 const port = process.env.PORT || 5000;
 const app = express();
 require('dotenv').config();
 
 app.use(cors());
 app.use(express.json());
-
-
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@bismillahenterpriseclus.eoxgyuj.mongodb.net/?retryWrites=true&w=majority&appName=BismillahEnterpriseCluster`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -41,13 +41,12 @@ async function run() {
         const selfTransectionsCollection = client.db('Bismillah_Enterprise').collection('self_transections');
         const selfTransectionsSummaryCollection = client.db('Bismillah_Enterprise').collection('self_transections_summary');
         const clientCornerCollection = client.db('Bismillah_Enterprise').collection('client_corner');
+        const airTicketClientCornerCollection = client.db('Bismillah_Enterprise').collection('air_ticket_client_corner');
         const voucherSlCollection = client.db('Bismillah_Enterprise').collection('voucher_sl_no');
         const productsCollection = client.db('Bismillah_Enterprise').collection('products');
+        const tokenCollection = client.db('Bismillah_Enterprise').collection('tokens');
 
         app.get("/shop_code", async (req, res) => {
-            // const id = process.env.Shop_Code_ObjectId;
-            // console.log(id);
-            // const query = { _id: new ObjectId(id) };
             const shopCode = await shopCodeCollection.find().toArray();
             res.send(shopCode);
         })
@@ -134,20 +133,6 @@ async function run() {
             res.send(result);
         })
 
-        // app.get('/get_network_ip', (req, res) => {
-        //     const interfaces = os.networkInterfaces();
-        //     let localIp = null;
-
-        //     for (let name in interfaces) {
-        //         for (let iface of interfaces[name]) {
-        //             if (iface.family === 'IPv4' && !iface.internal) {
-        //                 localIp = iface.address;
-        //             }
-        //         }
-        //     }
-
-        //     res.json({ ip: localIp || 'Not found' });
-        // });
         app.get('/user_request_uid/:uid', async (req, res) => {
             const uid = req.params.uid;
 
@@ -208,26 +193,6 @@ async function run() {
             const result = staffsCollection.insertOne(new_staff);
             res.send(result);
         })
-
-
-        // app.put('/set_ip/:id', async (req, res) => {
-        //     const id = req.params.id;
-        //     const filter = { _id: new ObjectId(id) };
-        //     const options = { upsert: true };
-        //     const updatedIP = req.body;
-        //     const wifiIP = {
-        //         $set: {
-        //             wifi_ip: updatedIP.wifi_ip
-        //         }
-        //     };
-
-        //     try {
-        //         const result = await wifiIpCollection.updateOne(filter, wifiIP, options);
-        //         res.send(result);
-        //     } catch (err) {
-        //         res.status(500).send({ error: 'Update failed', details: err });
-        //     }
-        // });
         app.put('/staffs_daily_time/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
@@ -300,123 +265,6 @@ async function run() {
             }
         });
 
-        // app.put('/reset_time/:id', async (req, res) => {
-        //     const id = req.params.id;
-        //     const updatedTime = req.body
-        //     const filter = { _id: new ObjectId(id) };
-        //     const updateDoc = {
-        //         $set: {
-        //             today_enter1_time: updatedTime.enter1_time,
-        //             today_exit1_time: updatedTime.exit1_time,
-        //             today_enter2_time: updatedTime.enter2_time,
-        //             today_exit2_time: updatedTime.exit2_time
-        //         }
-        //     };
-
-        //     try {
-        //         const result = await staffsCollection.updateOne(filter, updateDoc);
-        //         res.status(200).send(result);
-        //     } catch (err) {
-        //         console.error('Update error:', err);
-        //         res.status(500).send({ error: 'Update failed', details: err });
-        //     }
-        // });
-
-        // code with calculate and set daily data
-        app.put('/reset_time/:id', async (req, res) => {
-            const id = req.params.id;
-            const filter = { _id: new ObjectId(id) };
-
-            try {
-                // Get current staff data
-                const staff = await staffsCollection.findOne(filter);
-                const { today_enter1_time, today_exit1_time, today_enter2_time, today_exit2_time, hour_rate } = staff;
-
-                // Helper: Convert 12-hour time string to minutes
-                const toMinutes = (timeStr) => {
-                    if (!timeStr) return 0;
-                    const [time, modifier] = timeStr.split(' ');
-                    let [hours, minutes] = time.split(':').map(Number);
-                    if (modifier === 'PM' && hours !== 12) hours += 12;
-                    if (modifier === 'AM' && hours === 12) hours = 0;
-                    return hours * 60 + minutes;
-                };
-
-                // Calculate total working minutes
-                const enter1 = toMinutes(today_enter1_time);
-                const exit1 = toMinutes(today_exit1_time);
-                const enter2 = toMinutes(today_enter2_time);
-                const exit2 = toMinutes(today_exit2_time);
-                const totalMinutes = (exit1 - enter1) + (exit2 - enter2);
-                const totalHours = parseFloat((totalMinutes / 60).toFixed(2));
-                const totalEarn = parseFloat((totalHours * parseFloat(hour_rate)).toFixed(2));
-
-                // Prepare attendance object
-                const now = new Date();
-                const day = now.toLocaleDateString('en-BD', { day: 'numeric', month: 'long', year: 'numeric' });
-                const dayName = now.toLocaleDateString('en-BD', { weekday: 'long' });
-
-                const todaySummary = {
-                    date: day,
-                    day_name: dayName,
-                    enter1: today_enter1_time,
-                    exit1: today_exit1_time,
-                    enter2: today_enter2_time,
-                    exit2: today_exit2_time,
-                    total_hour: totalHours,
-                    total_earn: totalEarn
-                };
-
-                // Update database: Push daily data & reset today's values
-                const updateDoc = {
-                    $push: { current_month_details: todaySummary },
-                    $set: {
-                        today_enter1_time: '',
-                        today_exit1_time: '',
-                        today_enter2_time: '',
-                        today_exit2_time: ''
-                    }
-                };
-
-                const result = await staffsCollection.updateOne(filter, updateDoc);
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ error: 'Update failed', details: err.message });
-            }
-        });
-
-        cron.schedule('0 0 * * *', async () => {
-            const allStaffs = await staffsCollection.find().toArray();
-            for (const staff of allStaffs) {
-                const id = staff._id.toString();
-                // Reuse the existing reset logic as a function
-                await fetch(`http://localhost:5000/reset_time/${id}`, { method: 'PUT' });
-            }
-            console.log('✅ All staff times reset and saved at 12:00 AM');
-        });
-        // ------------------------------------------------------------------------------------------
-
-        cron.schedule('0 0 * * *', async () => {
-            console.log('⏰ Resetting time fields at 12:00 AM');
-
-            try {
-                const result = await staffsCollection.updateMany(
-                    {},
-                    {
-                        $set: {
-                            today_enter1_time: '',
-                            today_exit1_time: '',
-                            today_enter2_time: '',
-                            today_exit2_time: ''
-                        }
-                    }
-                );
-
-                console.log(`✅ Reset ${result.modifiedCount} records`);
-            } catch (error) {
-                console.error('❌ Failed to reset times:', error);
-            }
-        });
 
         // ✅ GET shop location
         app.get('/shop_location', async (req, res) => {
@@ -490,6 +338,7 @@ async function run() {
                         total_working_minute: bodyData.total_working_minute,
                         total_income: bodyData.total_income,
                         available_balance: bodyData.available_balance,
+                        today_date: bodyData.today_date,
                         today_enter1_time: '',
                         today_exit1_time: '',
                         today_enter2_time: '',
@@ -503,6 +352,7 @@ async function run() {
                 };
                 const ErrorDoc = {
                     $set: {
+                        today_date: bodyData.today_date,
                         today_enter1_time: '',
                         today_exit1_time: '',
                         today_enter2_time: '',
@@ -584,11 +434,9 @@ async function run() {
                 }
 
                 // Step 2: Push new transection + update balances
-                console.log(bodyData.transection_type);
                 if (bodyData.transection_type === 'Payback Lend') {
                     const new_withdrawal_amount = bodyData.previous_withdrawal_amount - bodyData.transection_amount;
                     const new_available_balance = bodyData.previous_available_balance + bodyData.transection_amount
-                    console.log(new_withdrawal_amount, new_available_balance)
                     const updateDoc = {
                         $push: {
                             transections: newTransectionsData
@@ -714,7 +562,6 @@ async function run() {
         });
         app.put('/start_new_month', async (req, res) => {
             const bodyData = req.body;
-            console.log(bodyData);
             try {
                 const existing = await shopTransectionsCollection.findOne({});
                 const result = await shopTransectionsCollection.updateOne(
@@ -729,7 +576,6 @@ async function run() {
         })
         app.put('/self_start_new_month', async (req, res) => {
             const bodyData = req.body;
-            console.log(bodyData);
             try {
                 const existing = await selfTransectionsCollection.findOne({});
                 const result = await selfTransectionsCollection.updateOne(
@@ -965,6 +811,27 @@ async function run() {
             const result = await clientCornerCollection.insertOne(clientData);
             res.send(result);
         })
+        app.get('/air_ticket_client_corner', async (req, res) => {
+            const result = await airTicketClientCornerCollection.find().toArray();
+            res.send(result);
+        });
+        app.get('/air_ticket_client_details/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const result = await airTicketClientCornerCollection.findOne(filter);
+            res.send(result);
+        });
+        app.delete('/air_ticket_client/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const result = await airTicketClientCornerCollection.deleteOne(filter);
+            res.send(result);
+        });
+        app.post('/air_ticket_new_client', async (req, res) => {
+            const clientData = req.body;
+            const result = await airTicketClientCornerCollection.insertOne(clientData);
+            res.send(result);
+        })
         app.get('/voucher_sl', async (req, res) => {
             const result = await voucherSlCollection.findOne({});
             res.send(result);
@@ -1000,16 +867,50 @@ async function run() {
                 total: Data.total,
                 paid_amount: Data.paid_amount,
                 due_amount: Data.due_amount,
-                payment_status: Data.payment_status
+                payment_status: Data.payment_status,
+                discount: Data.discount
             }
             try {
                 const client = await clientCornerCollection.findOne(filter);
 
                 // Step 1: If length > 19, remove first transection
-                if (client?.voucher?.length > 10) {
-                    await clientCornerCollection.updateOne(filter, { $pop: { voucher: -1 } }); // remove first
+                if (client?.vouchers?.length > 10) {
+                    await clientCornerCollection.updateOne(filter, { $pop: { vouchers: -1 } }); // remove first
                 }
                 const result = await clientCornerCollection.updateOne(
+                    filter,
+                    { $push: { vouchers: voucher } },
+                    options
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ error: 'Update failed', details: err });
+            }
+        });
+        app.put('/air_ticket_new_voucher/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const Data = req.body;
+            const voucher = {
+                date: Data.date,
+                voucher_no: String(Data.voucher_no),
+                destination: Data.destination,
+                flight_date: Data.flight_date,
+                ticket_price: Data.ticket_price,
+                paid_amount: Data.paid_amount,
+                due_amount: Data.due_amount,
+                payment_status: Data.payment_status,
+                discount: Data.discount
+            }
+            try {
+                const client = await airTicketClientCornerCollection.findOne(filter);
+
+                // Step 1: If length > 19, remove first transection
+                if (client?.vouchers?.length > 10) {
+                    await airTicketClientCornerCollection.updateOne(filter, { $pop: { vouchers: -1 } }); // remove first
+                }
+                const result = await airTicketClientCornerCollection.updateOne(
                     filter,
                     { $push: { vouchers: voucher } },
                     options
@@ -1023,16 +924,18 @@ async function run() {
             const id = req.params.id;
             const Data = req.body;
             const filter = { _id: new ObjectId(id), 'vouchers.voucher_no': Data.voucher_no };
+            const clientFilter = { _id: new ObjectId(id) };
             const transection = {
                 date: Data.date,
                 reference_voucher: String(Data.reference_voucher),
                 paid_amount: Data.paid_amount,
+                transection_amount: Data.transection_amount,
                 due_amount: Data.due,
                 payment_status: Data.payment_status
             }
             try {
-                const client = await clientCornerCollection.findOne(filter);
-
+                const client = await clientCornerCollection.findOne(clientFilter);
+                console.log(client.transections.length)
                 // Step 1: If length > 19, remove first transection
                 if (client?.transections?.length > 15) {
                     await clientCornerCollection.updateOne(filter, { $pop: { transections: -1 } }); // remove first
@@ -1043,7 +946,49 @@ async function run() {
                         $set: {
                             'vouchers.$.paid_amount': Data.paid_amount,
                             'vouchers.$.due_amount': Data.due,
-                            'vouchers.$.payment_status': Data.payment_status
+                            'vouchers.$.payment_status': Data.payment_status,
+                            'vouchers.$.discount': Data.discount
+                        }, $push: { transections: transection }
+                    }
+                );
+                if (result.modifiedCount > 0) {
+                    res.send({ success: true, message: 'updated' });
+                } else {
+                    res.status(404).send({ success: false, message: 'Voucher not found' });
+                }
+            } catch (err) {
+                console.log(err);
+                res.status(500).send({ error: 'Update failed', details: err });
+            }
+        });
+        app.put('/air_ticket_take_payment/:id', async (req, res) => {
+            const id = req.params.id;
+            const Data = req.body;
+            const filter = { _id: new ObjectId(id), 'vouchers.voucher_no': Data.voucher_no };
+            const clientFilter = { _id: new ObjectId(id) };
+            const transection = {
+                date: Data.date,
+                reference_voucher: String(Data.reference_voucher),
+                paid_amount: Data.paid_amount,
+                transection_amount: Data.transection_amount,
+                due_amount: Data.due,
+                payment_status: Data.payment_status
+            }
+            try {
+                const client = await airTicketClientCornerCollection.findOne(clientFilter);
+
+                // Step 1: If length > 19, remove first transection
+                if (client?.transections?.length > 15) {
+                    await airTicketClientCornerCollection.updateOne(filter, { $pop: { transections: -1 } }); // remove first
+                }
+                const result = await airTicketClientCornerCollection.updateOne(
+                    filter,
+                    {
+                        $set: {
+                            'vouchers.$.paid_amount': Data.paid_amount,
+                            'vouchers.$.due_amount': Data.due,
+                            'vouchers.$.payment_status': Data.payment_status,
+                            'vouchers.$.discount': Data.discount
                         }, $push: { transections: transection }
                     }
                 );
@@ -1108,10 +1053,198 @@ async function run() {
             });
             res.send(result);
         });
+        app.put('/change_time/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const bodyData = req.body;
+            if (bodyData.name === 'today_enter1_time') {
+                const result = await staffsCollection.updateOne(filter, {
+                    $set: {
+                        today_enter1_time: bodyData.time,
+                    }
+                });
+                res.send(result);
+            }
+            if (bodyData.name === 'today_exit1_time') {
+                const result = await staffsCollection.updateOne(filter, {
+                    $set: {
+                        today_exit1_time: bodyData.time,
+                    }
+                });
+                res.send(result);
+            }
+            if (bodyData.name === 'today_enter2_time') {
+                const result = await staffsCollection.updateOne(filter, {
+                    $set: {
+                        today_enter2_time: bodyData.time,
+                    }
+                });
+                res.send(result);
+            }
+            if (bodyData.name === 'today_exit2_time') {
+                const result = await staffsCollection.updateOne(filter, {
+                    $set: {
+                        today_exit2_time: bodyData.time,
+                    }
+                });
+                res.send(result);
+            }
+        });
+
+        app.put('/clear_bonus', async (req, res) => {
+            const bodyData = req.body;
+            const existing = await staffBonusCollection.findOne({});
+            if (bodyData.name === 'first_entry') {
+                const result = await staffBonusCollection.updateOne(
+                    { _id: existing._id },
+                    {
+                        $set: {
+                            first_entry: { time: '', uid: '' },
+                        }
+                    }
+                );
+                res.send(result);
+            }
+            if (bodyData.name === 'second_entry') {
+                const result = await staffBonusCollection.updateOne(
+                    { _id: existing._id },
+                    {
+                        $set: {
+                            second_entry: { time: '', uid: '' },
+                        }
+                    }
+                );
+                res.send(result);
+            }
+        })
+
+
+        app.patch('/staff/remove_attendance/:id', async (req, res) => {
+            const { id } = req.params;
+            const { dateToRemove } = req.body;
+
+            try {
+                const staff = await staffsCollection.findOne({ _id: new ObjectId(id) });
+                if (!staff) return res.status(404).send({ message: 'Staff not found' });
+
+                const oldDetails = staff.current_month_details || [];
+                // Find the day to delete
+                const dayToDelete = oldDetails.find(item => item.current_date === dateToRemove);
+                if (!dayToDelete) return res.status(404).send({ message: 'Date not found' });
+
+                // ✅ Now recalculate totals from the updatedDetails array
+                let total_income = 0;
+                let bonus = 0;
+                let available_balance = 0;
+                let total_working_hour = 0;
+                let total_working_minute = 0;
+
+                const previousTotalWorkingMinute = (staff.total_working_hour * 60) + staff.total_working_minute;
+                const deletedTotalWorkingMinute = (dayToDelete.total_hour * 60) + dayToDelete.total_minute;
+                const updatedTotalWorkingMinute = previousTotalWorkingMinute - deletedTotalWorkingMinute;
+                total_income = parseFloat((staff.total_income - dayToDelete.total_earn).toFixed(2));
+                bonus = staff.bonus - dayToDelete.today_bonus;
+                available_balance = parseFloat((staff.available_balance - dayToDelete.total_earn).toFixed(2));
+                total_working_hour = Math.floor(updatedTotalWorkingMinute / 60);
+                total_working_minute = updatedTotalWorkingMinute % 60;
+
+
+                // ✅ Update the document
+                const result = await staffsCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            total_income,
+                            bonus,
+                            available_balance,
+                            total_working_hour,
+                            total_working_minute
+                        },
+                        $pull: {
+                            current_month_details: { current_date: dateToRemove }
+                        }
+                    }
+                );
+
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: '❌ Server error', error: err.message });
+            }
+        });
+        app.patch('/edit_voucher/:id', async (req, res) => {
+            const { id } = req.params;
+            const { voucher_no, products, total, due_amount, status } = req.body;
+
+            try {
+                const filter = { _id: new ObjectId(id), 'vouchers.voucher_no': voucher_no };
+                // ✅ Update the document
+                const result = await clientCornerCollection.updateOne(
+                    filter,
+                    {
+                        $set: {
+                            'vouchers.$.products': products,
+                            'vouchers.$.due_amount': due_amount,
+                            'vouchers.$.payment_status': status,
+                            'vouchers.$.total': total
+                        }
+                    }
+                );
+
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: '❌ Server error', error: err.message });
+            }
+        });
+        app.patch('/edit_client_data/:id', async (req, res) => {
+            const { id } = req.params;
+            const { name, on_behalf, address, mobile_no } = req.body;
+
+            try {
+                const filter = { _id: new ObjectId(id) };
+                // ✅ Update the document
+                const result = await clientCornerCollection.updateOne(
+                    filter,
+                    {
+                        $set: {
+                            name,
+                            on_behalf,
+                            mobile_no,
+                            address
+                        }
+                    }
+                );
+
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: '❌ Server error', error: err.message });
+            }
+        });
+        app.patch('/air_ticket_edit_client_data/:id', async (req, res) => {
+            const { id } = req.params;
+            const { name, address, mobile_no } = req.body;
+
+            try {
+                const filter = { _id: new ObjectId(id) };
+                // ✅ Update the document
+                const result = await airTicketClientCornerCollection.updateOne(
+                    filter,
+                    {
+                        $set: {
+                            name,
+                            mobile_no,
+                            address
+                        }
+                    }
+                );
+
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: '❌ Server error', error: err.message });
+            }
+        });
 
 
         await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
