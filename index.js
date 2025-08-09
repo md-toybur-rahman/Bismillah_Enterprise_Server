@@ -12,7 +12,7 @@ require('dotenv').config();
 app.use(cors());
 app.use(express.json());
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@bismillahenterpriseclus.eoxgyuj.mongodb.net/?retryWrites=true&w=majority&appName=BismillahEnterpriseCluster`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@bookshelfcluster.p3s31ub.mongodb.net/?retryWrites=true&w=majority&appName=bookshelfCluster`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
     serverApi: {
@@ -630,7 +630,7 @@ async function run() {
             res.send(result);
         });
         app.put('/shop_transections', async (req, res) => {
-            const filter = { _id: new ObjectId(process.env.Shop_Transections_ObjectId) }
+            const filter = await shopTransectionsCollection.findOne({});
             const bodyData = req.body;
             const transection = {
                 transection_id: bodyData.transection_id,
